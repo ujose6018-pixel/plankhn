@@ -152,9 +152,10 @@
                                                 <div>
                                                     <p className="font-black text-xl text-slate-900 mb-1">{usersData[v.userId]?.username || 'Cargando...'}</p>
                                                     <p className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg inline-block mb-3">{usersData[v.userId]?.phone || '...'}</p>
-                                                    <div className="flex gap-4 items-center">
-                                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{v.serviceName}</p>
-                                                        <p className="text-lg font-black text-slate-900">L{v.amount}</p>
+                                                    <div className="flex flex-col gap-1">
+                                                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{v.serviceName} - <span className="text-slate-900 font-black">L{v.amount}</span></p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">REF: {v.reference || 'N/A'}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">BANCO: {v.bank || 'N/A'}</p>
                                                     </div>
                                                 </div>
                                             </div>
