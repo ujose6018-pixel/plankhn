@@ -16,6 +16,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <!-- Crypto-JS for additional encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Tesseract.js -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <!-- Styles -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
     <style>
@@ -225,65 +229,46 @@
                 setUploading(true);
                 
                 try {
-                    // 1. Convertir imagen a Base64 para Gemini (No guardamos en Storage permanentemente)
+                    // Previsualización local
                     const reader = new FileReader();
-                    const base64Promise = new Promise(resolve => {
-                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                    const previewPromise = new Promise(resolve => {
+                        reader.onload = () => resolve(reader.result);
                         reader.readAsDataURL(file);
                     });
-                    const base64Data = await base64Promise;
+                    const previewUrl = await previewPromise;
 
-                    // 2. Llamar a Google Gemini AI Vision (v1 estable)
-                    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${window.GEMINI_API_KEY}`;
-                    
-                    const prompt = {
-                        contents: [{
-                            parts: [
-                                { text: "Analiza este baucher de Honduras. Extrae JSON: { 'monto': number, 'referencia': 'string', 'fecha': 'string', 'banco': 'string' }. Responde SOLO el JSON." },
-                                { inline_data: { mime_type: file.type, data: base64Data } }
-                            ]
-                        }]
-                    };
-
-                    const response = await fetch(GEMINI_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(prompt)
+                    // --- OCR CON TESSERACT.JS ---
+                    const { data: { text } } = await Tesseract.recognize(file, 'spa', {
+                        logger: m => console.log(m)
                     });
 
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(`Gemini Error (${data.error.code}): ${data.error.message}`);
-                    }
+                    console.log("Texto extraído:", text);
 
-                    let aiResult = {};
-                    
-                    try {
-                        if (!data.candidates || !data.candidates[0]) {
-                            throw new Error("La IA no devolvió resultados. Asegúrate de que la foto sea clara.");
-                        }
-                        const textResponse = data.candidates[0].content.parts[0].text;
-                        const jsonStr = textResponse.match(/\{.*\}/s)[0];
-                        aiResult = JSON.parse(jsonStr);
-                    } catch (e) {
-                        console.error("Error parseando respuesta de Gemini:", e, data);
-                        alert("No se pudo extraer la información del baucher. Por favor, rellena los datos manualmente.");
-                        aiResult = { monto: selectedService.price, referencia: '', banco: '', fecha: new Date().toLocaleDateString() };
-                    }
+                    // --- EXTRACCIÓN DE DATOS CON REGEX ---
+                    // Fecha: Busca formatos comunes de fecha
+                    const fechaMatch = text.match(/(?:\d{1,2}\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4})|(?:\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
+                    const fecha = fechaMatch ? fechaMatch[0] : new Date().toLocaleDateString('es-HN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+                    // Monto: Busca L seguido de números, comas y puntos
+                    const montoMatch = text.match(/(?:L|LPS|Lempiras)\s?([\d,]+\.\d{2})/i);
+                    const monto = montoMatch ? `L${montoMatch[1]}` : `L${selectedService.price}.00`;
+
+                    // Referencia: Busca números largos de 6 a 12 dígitos
+                    const refMatch = text.match(/(?:Referencia|N[o°]|Transacci[oó]n|Recibo)\s?([A-Z0-9]{6,12})/i) || text.match(/\b\d{6,12}\b/);
+                    const referencia = refMatch ? (Array.isArray(refMatch) ? refMatch[1] || refMatch[0] : refMatch) : 'No detectada';
 
                     setOcrResult({
-                        detected_amount: aiResult.monto || selectedService.price,
-                        reference: aiResult.referencia || 'No detectada',
-                        bank: aiResult.banco || 'Desconocido',
-                        date: aiResult.fecha || new Date().toLocaleDateString(),
-                        confidence: 0.95,
-                        imageUrl: reader.result // Solo para previsualización local, no se guarda en Storage
+                        detected_amount: monto.replace('L', ''),
+                        reference: referencia,
+                        bank: 'DETECTADO POR TESSERACT',
+                        date: fecha,
+                        confidence: 0.90,
+                        imageUrl: previewUrl
                     });
 
                 } catch (error) {
-                    console.error("Error con Gemini:", error);
-                    alert('Error al procesar con IA. Verifica tu conexión o API Key.');
+                    console.error("Error con Tesseract:", error);
+                    alert('Error al procesar la imagen. Asegúrate de que sea un formato válido.');
                 }
                 setUploading(false);
             };
