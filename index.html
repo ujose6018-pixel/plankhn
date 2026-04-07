@@ -16,8 +16,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <!-- Crypto-JS for additional encryption -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Tesseract.js -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <!-- Styles -->
@@ -244,23 +242,23 @@
 
                     console.log("Texto extraído:", text);
 
-                    // --- EXTRACCIÓN DE DATOS CON REGEX ---
-                    // Fecha: Busca formatos comunes de fecha
+                    // --- EXTRACCIÓN DE DATOS CON REGEX (ESPECÍFICO BAC) ---
+                    // Fecha BAC: Suele venir como DD/MM/AAAA o similar
                     const fechaMatch = text.match(/(?:\d{1,2}\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4})|(?:\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i);
                     const fecha = fechaMatch ? fechaMatch[0] : new Date().toLocaleDateString('es-HN', { day: '2-digit', month: 'long', year: 'numeric' });
 
-                    // Monto: Busca L seguido de números, comas y puntos
-                    const montoMatch = text.match(/(?:L|LPS|Lempiras)\s?([\d,]+\.\d{2})/i);
+                    // Monto BAC: Busca L. o LPS seguido de números (ej: L. 500.00 o L500.00)
+                    const montoMatch = text.match(/(?:L|LPS|L\.)\s?([\d,]+\.\d{2})/i) || text.match(/([\d,]+\.\d{2})/);
                     const monto = montoMatch ? `L${montoMatch[1]}` : `L${selectedService.price}.00`;
 
-                    // Referencia: Busca números largos de 6 a 12 dígitos
-                    const refMatch = text.match(/(?:Referencia|N[o°]|Transacci[oó]n|Recibo)\s?([A-Z0-9]{6,12})/i) || text.match(/\b\d{6,12}\b/);
+                    // Referencia BAC: Suele ser un número largo
+                    const refMatch = text.match(/(?:Referencia|N[o°]|Transacci[oó]n|Recibo|ID)\s?([A-Z0-9]{6,15})/i) || text.match(/\b\d{8,15}\b/);
                     const referencia = refMatch ? (Array.isArray(refMatch) ? refMatch[1] || refMatch[0] : refMatch) : 'No detectada';
 
                     setOcrResult({
                         detected_amount: monto.replace('L', ''),
                         reference: referencia,
-                        bank: 'DETECTADO POR TESSERACT',
+                        bank: 'BAC CREDOMATIC',
                         date: fecha,
                         confidence: 0.90,
                         imageUrl: previewUrl
@@ -467,19 +465,19 @@
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Monto Extraído (L.)</label>
-                                                <input name="amount" type="number" defaultValue={ocrResult.detected_amount} required className="form-input font-black text-xl text-indigo-600" />
+                                                <input name="amount" type="text" value={ocrResult.detected_amount} readOnly className="form-input font-black text-xl text-indigo-600 bg-slate-100 cursor-not-allowed" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">N° de Referencia</label>
-                                                <input name="reference" type="text" defaultValue={ocrResult.reference} required className="form-input font-bold" />
+                                                <input name="reference" type="text" value={ocrResult.reference} readOnly className="form-input font-bold bg-slate-100 cursor-not-allowed" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Banco</label>
-                                                <input name="bank" type="text" defaultValue={ocrResult.bank} required className="form-input font-bold" />
+                                                <input name="bank" type="text" value={ocrResult.bank} readOnly className="form-input font-bold bg-slate-100 cursor-not-allowed" />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-4">Fecha</label>
-                                                <input name="date" type="text" defaultValue={ocrResult.date} required className="form-input font-bold" />
+                                                <input name="date" type="text" value={ocrResult.date} readOnly className="form-input font-bold bg-slate-100 cursor-not-allowed" />
                                             </div>
                                         </div>
 
