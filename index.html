@@ -54,6 +54,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
+        const googleProvider = new firebase.auth.GoogleAuthProvider();
 
         function App() {
             const [user, setUser] = useState(null);
@@ -146,6 +147,32 @@
                     }
                 } catch (error) {
                     alert(error.message);
+                }
+                setLoading(false);
+            };
+
+            const handleGoogleAuth = async () => {
+                setLoading(true);
+                try {
+                    const result = await auth.signInWithPopup(googleProvider);
+                    const u = result.user;
+                    
+                    // Verificar si ya tiene perfil en Firestore
+                    const doc = await db.collection('users').doc(u.uid).get();
+                    if (!doc.exists) {
+                        // Si es nuevo, guardar perfil básico (el usuario deberá completar el teléfono luego o lo pedimos ahora)
+                        const userData = {
+                            username: encryptData(u.displayName || 'Usuario Google'),
+                            phone: encryptData('Pendiente'), // Se puede pedir después
+                            email: u.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        await db.collection('users').doc(u.uid).set(userData);
+                        setProfile(userData);
+                    }
+                    setView('landing');
+                } catch (error) {
+                    alert('Error con Google: ' + error.message);
                 }
                 setLoading(false);
             };
@@ -278,6 +305,20 @@
                                         {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Segura'}
                                     </button>
                                 </form>
+
+                                <div className="mt-6">
+                                    <div className="relative mb-6">
+                                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+                                        <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-4 text-slate-400 font-bold">O continuar con</span></div>
+                                    </div>
+                                    <button 
+                                        onClick={handleGoogleAuth}
+                                        className="w-full flex items-center justify-center gap-4 bg-white border-2 border-slate-100 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all shadow-sm"
+                                    >
+                                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-6 h-6" />
+                                        <span>Google</span>
+                                    </button>
+                                </div>
                                 
                                 <button onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')} className="w-full text-center mt-8 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
                                     {authMode === 'login' ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
