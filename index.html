@@ -233,13 +233,13 @@
                     });
                     const base64Data = await base64Promise;
 
-                    // 2. Llamar a Google Gemini AI Vision
-                    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${window.GEMINI_API_KEY}`;
+                    // 2. Llamar a Google Gemini AI Vision (v1 estable)
+                    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${window.GEMINI_API_KEY}`;
                     
                     const prompt = {
                         contents: [{
                             parts: [
-                                { text: "Analiza este baucher de depósito bancario en Honduras y extrae únicamente en formato JSON: { 'monto': número, 'referencia': 'string', 'fecha': 'DD/MM/AAAA', 'banco': 'string' }. Si no encuentras un dato, pon null." },
+                                { text: "Analiza este baucher de Honduras. Extrae JSON: { 'monto': number, 'referencia': 'string', 'fecha': 'string', 'banco': 'string' }. Responde SOLO el JSON." },
                                 { inline_data: { mime_type: file.type, data: base64Data } }
                             ]
                         }]
@@ -252,18 +252,24 @@
                     });
 
                     const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(`Gemini Error (${data.error.code}): ${data.error.message}`);
+                    }
+
                     let aiResult = {};
                     
                     try {
+                        if (!data.candidates || !data.candidates[0]) {
+                            throw new Error("La IA no devolvió resultados. Asegúrate de que la foto sea clara.");
+                        }
                         const textResponse = data.candidates[0].content.parts[0].text;
-                        // Limpiar el texto para obtener solo el JSON
                         const jsonStr = textResponse.match(/\{.*\}/s)[0];
                         aiResult = JSON.parse(jsonStr);
                     } catch (e) {
-                        console.error("Error parseando respuesta de Gemini:", e);
-                        alert("La IA no pudo leer el baucher claramente. Por favor intenta con una foto más clara.");
-                        setUploading(false);
-                        return;
+                        console.error("Error parseando respuesta de Gemini:", e, data);
+                        alert("No se pudo extraer la información del baucher. Por favor, rellena los datos manualmente.");
+                        aiResult = { monto: selectedService.price, referencia: '', banco: '', fecha: new Date().toLocaleDateString() };
                     }
 
                     setOcrResult({
