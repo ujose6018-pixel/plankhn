@@ -88,11 +88,10 @@
 
             const handleAuth = async (e) => {
                 e.preventDefault();
-                const identifier = e.target.identifier.value; // Puede ser email o teléfono
-                const password = e.target.password.value;
                 setLoading(true);
 
                 try {
+                    const password = e.target.password.value;
                     if (authMode === 'register') {
                         const email = e.target.email.value;
                         const username = e.target.username.value;
@@ -114,6 +113,7 @@
                         setView('landing');
                     } else {
                         // Login Dual (Email o Teléfono)
+                        const identifier = e.target.identifier.value;
                         let emailToLogin = identifier;
                         
                         // Si no parece un email, buscar por teléfono
@@ -274,7 +274,7 @@
                                         <input name="identifier" type="text" placeholder="Email o Teléfono" required className="form-input" />
                                     )}
                                     <input name="password" type="password" placeholder="Contraseña Segura" required className="form-input" />
-                                    <button className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-indigo-600 transition-all shadow-xl">
+                                    <button type="submit" className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-indigo-600 transition-all shadow-xl">
                                         {authMode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta Segura'}
                                     </button>
                                 </form>
